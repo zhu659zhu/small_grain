@@ -1,0 +1,47 @@
+服务器端：
+
+安装go语言环境
+sudo yum install build-essential golang mercurial git
+
+git下载ngrok源码
+git clone https://github.com/tutumcloud/ngrok.git ngrok
+mv ngrok /usr/local/
+cd /usr/local/ngrok
+
+生成证书，替换NGROK_DOMAIN为域名地址
+NGROK_DOMAIN="zhuhd.win"
+openssl genrsa -out base.key 2048
+openssl req -new -x509 -nodes -key base.key -days 10000 -subj "/CN=$NGROK_DOMAIN" -out base.pem
+openssl genrsa -out server.key 2048
+openssl req -new -key server.key -subj "/CN=$NGROK_DOMAIN" -out server.csr
+openssl x509 -req -in server.csr -CA base.pem -CAkey base.key -CAcreateserial -days 10000 -out server.crt
+cp base.pem assets/client/tls/ngrokroot.crt
+
+编译服务器端可执行文件
+sudo make release-server release-client
+
+运行服务端
+/usr/local/ngrok/bin/ngrokd -tlsKey=/usr/local/ngrok/server.key -tlsCrt=/usr/local/ngrok/server.crt -domain="zhuhd.win" -tunnelAddr=":11000" -httpAddr=":11001" -httpsAddr=":11002"
+
+编译客户端可执行文件
+sudo GOOS=linux GOARCH=amd64 make release-server release-client
+编译完成后可以在/usr/local/ngrok/bin/目录下找到对应的系统版本，下载其中的可执行文件ngrok至客户机
+
+
+客户端：
+
+将
+编辑配置文件
+vi ngrok.cfg
+
+写入配置(严格缩进)
+server_addr: "zhuhd.win:11000"
+trust_host_root_certs: false
+tunnels:
+      ssh:
+        remote_port: 36666   
+        proto:
+            tcp: 22
+                
+执行即可
+./ngrok start ssh
